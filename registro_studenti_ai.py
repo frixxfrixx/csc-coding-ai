@@ -177,6 +177,31 @@ def aggiungi_studente(percorso_file: str):
     # Confirmation to user
     print(f"\n✅ Student {nome} {cognome} successfully added.")
 
+def stampa_lista_voti_studente(percorso_file: str):
+    """
+    Stampa la lista dei voti per uno studente specifico identificato dalla matricola.
+
+    Args:
+        percorso_file: Percorso completo del file dati
+
+    Note:
+        - Chiede la matricola all'utente
+        - Se la matricola non esiste, mostra un messaggio di errore
+        - Se esiste, mostra i voti dello studente
+    """
+    studenti = leggi_studenti_da_file(percorso_file)
+    matricola_input = input("Inserisci il numero di matricola dello studente: ").strip()
+    studente = next((s for s in studenti if s.get("matricola") == matricola_input), None)
+    if not studente:
+        print(f"❌ Errore: Nessuno studente trovato con matricola {matricola_input}")
+        return
+    voti = studente.get("voti", [])
+    if not voti:
+        print("⚠️ Nessun voto disponibile per questo studente.")
+    else:
+        print("I voti sono:")
+        for voto in voti:
+            print(f"- {voto}")
 
 def aggiungi_voto(percorso_file: str):
     """
@@ -282,7 +307,6 @@ def cancella_studente(percorso_file: str):
 
     # Conferma all'utente
     print(f"✅ Studente {nome_completo} rimosso con successo dal registro.")
-
 
 # Menù principale del programma
 if __name__ == "__main__":
