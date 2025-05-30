@@ -1,19 +1,30 @@
 """
-Student Registry - Management system for university students
-===========================================================
-This program implements a simple electronic registry that allows to:
-- View the list of students with their grade averages
-- Add new students
-- Add grades to existing students
+Registro Studenti - Sistema di gestione per studenti universitari
+==============================================================
+Questo programma implementa un registro elettronico che permette di:
+- Visualizzare la lista degli studenti con le loro medie
+- Aggiungere nuovi studenti
+- Aggiungere voti agli studenti esistenti
 
-Data is saved in JSON format in a text file.
+I dati vengono salvati in formato JSON in un file di testo.
 """
 
-import os  # Module to interact with the operating system
-import json  # Module to work with data in JSON format (JavaScript Object Notation)
-from typing import List, Dict  # Type annotations to improve code readability
+import os  # Modulo per interagire con il sistema operativo
+import json  # Modulo per lavorare con dati in formato JSON (JavaScript Object Notation)
+from typing import List, Dict, Optional
+from colorama import init, Fore, Style
+from tabulate import tabulate
 
-# Data file path configuration
+# Inizializza colorama per i colori nel terminale
+init()
+
+# Costanti di configurazione
+VOTO_MIN = 18
+VOTO_MAX = 30
+FILE_ENCODING = 'utf-8'
+JSON_INDENT = 2
+
+# Configurazione del percorso del file dati
 # ---------------------------------------
 # Gets the absolute path of the 'registro.txt' file in the same folder as the script
 # __file__ is a special variable that contains the path of the current file
@@ -23,24 +34,23 @@ file_path = os.path.join(main_dir, 'registro.txt')  # Composes the complete file
 
 def leggi_studenti_da_file(percorso_file: str) -> List[Dict]:
     """
-    Reads the JSON file and returns the list of students as a list of dictionaries.
+    Legge il file JSON e restituisce la lista degli studenti come lista di dizionari.
     
     Args:
-        percorso_file: Complete path of the JSON file to read
+        percorso_file: Percorso completo del file JSON da leggere
         
     Returns:
-        List[Dict]: List of dictionaries, each representing a student
-                   Returns empty list in case of error
+        List[Dict]: Lista di dizionari, ognuno rappresentante uno studente
+                   Restituisce lista vuota in caso di errore
     
     Note:
-        - Uses encoding='utf-8' to correctly handle special characters
-        - Handles two possible exceptions:
-          * FileNotFoundError: when the file doesn't exist
-          * JSONDecodeError: when the file exists but doesn't contain valid JSON
-    """
+        - Usa encoding='utf-8' per gestire correttamente i caratteri speciali
+        - Gestisce due possibili eccezioni:
+          * FileNotFoundError: quando il file non esiste
+          * JSONDecodeError: quando il file esiste ma non contiene JSON valido    """
     try:
-        with open(percorso_file, encoding='utf-8') as file:  # 'with' ensures the file is closed
-            return json.load(file)  # Converts JSON into Python data structure
+        with open(percorso_file, encoding='utf-8') as file:  # 'with' assicura che il file venga chiuso
+            return json.load(file)  # Converte il JSON in una struttura dati Python
     except (json.JSONDecodeError, FileNotFoundError):
         print("❌ Error in JSON file or file not found.")
         return []  # Returns an empty list in case of error
@@ -48,44 +58,45 @@ def leggi_studenti_da_file(percorso_file: str) -> List[Dict]:
 
 def calcola_media(voti: List[float]) -> float:
     """
-    Calculates the arithmetic mean of a list of numeric grades.
+    Calcola la media aritmetica di una lista di voti numerici.
     
     Args:
-        voti: List of grades to calculate the average from
+        voti: Lista di voti da cui calcolare la media
         
     Returns:
-        float: Average calculated with decimal precision, 0.0 if there are no valid grades
+        float: Media calcolata con precisione decimale, 0.0 se non ci sono voti validi
         
     Note:
-        - Filters only numeric values (integers or decimals) from the list
-        - Uses list comprehension to create a new filtered list
-        - Checks that the list is not empty before calculating the average
+        - Filtra solo i valori numerici (interi o decimali) dalla lista
+        - Utilizza list comprehension per creare una nuova lista filtrata
+        - Controlla che la lista non sia vuota prima di calcolare la media
     """
     voti_validi = [v for v in voti if isinstance(v, (int, float))]  # Filters only valid numbers
     return sum(voti_validi) / len(voti_validi) if voti_validi else 0.0  # Avoids division by zero
 
 
 def stampa_studenti(studenti: List[Dict]):
-    """
-    Prints on screen the list of students with their data.
-    
-    Args:
-        studenti: List of dictionaries, each representing a student
-        
-    Note:
-        - For each student shows: student ID, first name, last name and grade average
-        - Uses the .get() method of dictionaries which allows to specify
-          a default value ('N/D' = Not Available) if the key doesn't exist
-        - Formats the average with two decimals using f-string syntax {media:.2f}
-    """
-    print("\nStudent list:")
+    print("\nElenco studenti:")
+    # Prepara e stampa la tabella formattata
+    headers = ["Matricola", "Nome", "Cognome", "Media Voti"]
+    rows = []
     for studente in studenti:
-        matricola = studente.get("matricola", "N/D")  # 'N/D' is the default value if the key doesn't exist
+        matricola = studente.get("matricola", "N/D")  # 'N/D' è il valore predefinito se la chiave non esiste
         nome = studente.get("nome", "N/D")
         cognome = studente.get("cognome", "N/D")
-        voti = studente.get("voti", [])  # Empty list if the key doesn't exist
+        voti = studente.get("voti", [])  # Lista vuota se la chiave non esiste
         media = calcola_media(voti)
-        print(f"[{matricola}] {nome} {cognome} - Grade average: {media:.2f}")  # Formatting with f-string
+        
+        # Colora la media in base al valore
+        color = Fore.RED if media < 24 else Fore.GREEN if media >= 27 else Fore.RESET
+        rows.append([
+            matricola,
+            nome,
+            cognome,
+            f"{color}{media:.2f}{Fore.RESET}"
+        ])
+    
+    print(tabulate(rows, headers=headers, tablefmt="grid"))
 
 
 def esegui_processo(percorso_file: str):
@@ -96,50 +107,47 @@ def esegui_processo(percorso_file: str):
 
 def aggiungi_studente(percorso_file: str):
     """
-    Adds a new student by requesting data via input and saving it to the file.
+    Aggiunge un nuovo studente richiedendo i dati via input e salvandoli nel file.
     
     Args:
-        percorso_file: Complete path of the data file
+        percorso_file: Percorso completo del file dati
         
     Note:
-        - The function implements input data validation:
-          * The student ID, first name, and last name fields are mandatory
-          * Grades must be integers between 18 and 30
-        - Uses while loops to repeatedly request data until
-          it is provided correctly
-        - Each student is represented as a dictionary with standardized keys
+        - La funzione implementa la validazione dei dati in input:
+          * I campi matricola, nome e cognome sono obbligatori
+          * I voti devono essere numeri interi compresi tra 18 e 30
+        - Utilizza cicli while per richiedere ripetutamente i dati fino a quando
+          non vengono forniti in modo corretto
+        - Ogni studente è rappresentato come un dizionario con chiavi standardizzate
     """
-    # PHASE 1: Data collection with validation
+    # FASE 1: Raccolta dati con validazione
     # ----------------------------------------
     
-    # Request mandatory student ID
+    # Richiesta matricola obbligatoria
     while True:
-        matricola = input("Student ID: ").strip()  # .strip() removes leading and trailing spaces
+        matricola = input("Matricola: ").strip()  # .strip() rimuove spazi iniziali e finali
         if matricola:
-            break  # Exits the loop if the student ID is not empty
-        print("⚠️ Student ID cannot be empty. Try again.")
-
-    # Request mandatory first name
+            break  # Esce dal ciclo se la matricola non è vuota
+        print("⚠️ La matricola non può essere vuota. Riprova.")    # Richiesta nome obbligatorio
     while True:
-        nome = input("First name: ").strip()
+        nome = input("Nome: ").strip()
         if nome:
             break
-        print("⚠️ First name cannot be empty. Try again.")
+        print("⚠️ Il nome non può essere vuoto. Riprova.")
 
-    # Request mandatory last name
+    # Richiesta cognome obbligatorio
     while True:
-        cognome = input("Last name: ").strip()
+        cognome = input("Cognome: ").strip()
         if cognome:
             break
-        print("⚠️ Last name cannot be empty. Try again.")    # Request and validation of grades
-    voti_input = input("Enter grades separated by commas (e.g. 24,26,30): ")
+        print("⚠️ Il cognome non può essere vuoto. Riprova.")# Request and validation of grades    voti_input = input("Inserisci i voti separati da virgola (es. 24,26,30): ")
     try:
-        # List comprehension with multiple conditions:
-        # 1. Splits the input based on commas
-        # 2. For each value, removes leading and trailing spaces
-        # 3. Verifies that it consists only of digits
-        # 4. Verifies that it is in the 18-30 range
-        # 5. Converts to integer
+        # List comprehension con più condizioni:
+        # 1. Divide l'input in base alle virgole
+        # 2. Per ogni valore, rimuove gli spazi iniziali e finali
+        # 3. Verifica che sia composto solo da cifre
+        # 4. Verifica che sia nell'intervallo 18-30
+        # 5. Converte in intero
         voti = [
             int(v.strip()) 
             for v in voti_input.split(",") 
@@ -308,38 +316,29 @@ def cancella_studente(percorso_file: str):
     # Conferma all'utente
     print(f"✅ Studente {nome_completo} rimosso con successo dal registro.")
 
-# Menù principale del programma
-if __name__ == "__main__":
-    """
-    Punto di ingresso dell'applicazione.
+# Menu principale del programma
+def menu():
+    azioni = {
+        "1": ("Visualizza lista studenti", stampa_studenti),
+        "2": ("Aggiungi studente", aggiungi_studente),
+        "3": ("Aggiungi voto", aggiungi_voto),
+        "4": ("Cancella studente", cancella_studente),
+    }
     
-    Note:
-        - La condizione if __name__ == "__main__": garantisce che questo codice venga eseguito solo 
-          quando lo script viene avviato direttamente e non quando viene importato
-        - Il menù utilizza un ciclo while infinito (interrotto solo dall'opzione di uscita)
-        - Ogni opzione chiama la funzione corrispondente passando il percorso del file dati
-    """
     while True:
-        # Visualizza il menù delle opzioni
-        print("\nCosa vuoi fare?")
-        print("[1] Stampa lista studenti")
-        print("[2] Aggiungi studente")
-        print("[3] Aggiungi voto")
-        print("[4] Cancella studente")
+        print(f"\n{Fore.CYAN}=== Registro Studenti ==={Fore.RESET}")
+        for k, (desc, _) in azioni.items():
+            print(f"[{k}] {desc}")
         print("[0] Esci")
-        scelta = input("Scelta: ").strip()
-
-        # Gestione delle diverse opzioni tramite if-elif-else
-        if scelta == "1":
-            esegui_processo(file_path)
-        elif scelta == "2":
-            aggiungi_studente(file_path)
-        elif scelta == "3":
-            aggiungi_voto(file_path)
-        elif scelta == "4":
-            cancella_studente(file_path)
-        elif scelta == "0":
-            print("👋 Uscita dal programma.")
-            break  # Esce dal ciclo while e termina il programma
+        
+        scelta = input("\nScelta: ").strip()
+        if scelta == "0":
+            print(f"{Fore.YELLOW}👋 Arrivederci!{Fore.RESET}")
+            break
+        elif scelta in azioni:
+            azioni[scelta][1](file_path)
         else:
-            print("❌ Scelta non valida. Riprova.")
+            print(f"{Fore.RED}❌ Scelta non valida.{Fore.RESET}")
+
+if __name__ == "__main__":
+    menu()
