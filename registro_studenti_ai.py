@@ -14,6 +14,7 @@ import json  # Modulo per lavorare con dati in formato JSON (JavaScript Object N
 from typing import List, Dict, Optional
 from colorama import init, Fore, Style
 from tabulate import tabulate
+from utils_matematici import calcola_media  # Importa la funzione dal nuovo modulo
 
 # Inizializza colorama per i colori nel terminale
 init()
@@ -54,25 +55,6 @@ def leggi_studenti_da_file(percorso_file: str) -> List[Dict]:
     except (json.JSONDecodeError, FileNotFoundError):
         print("❌ Error in JSON file or file not found.")
         return []  # Returns an empty list in case of error
-
-
-def calcola_media(voti: List[float]) -> float:
-    """
-    Calcola la media aritmetica di una lista di voti numerici.
-    
-    Args:
-        voti: Lista di voti da cui calcolare la media
-        
-    Returns:
-        float: Media calcolata con precisione decimale, 0.0 se non ci sono voti validi
-        
-    Note:
-        - Filtra solo i valori numerici (interi o decimali) dalla lista
-        - Utilizza list comprehension per creare una nuova lista filtrata
-        - Controlla che la lista non sia vuota prima di calcolare la media
-    """
-    voti_validi = [v for v in voti if isinstance(v, (int, float))]  # Filters only valid numbers
-    return sum(voti_validi) / len(voti_validi) if voti_validi else 0.0  # Avoids division by zero
 
 
 def stampa_studenti(studenti: List[Dict]):
@@ -140,31 +122,34 @@ def aggiungi_studente(percorso_file: str):
         cognome = input("Cognome: ").strip()
         if cognome:
             break
-        print("⚠️ Il cognome non può essere vuoto. Riprova.")# Request and validation of grades    voti_input = input("Inserisci i voti separati da virgola (es. 24,26,30): ")
-    try:
-        # List comprehension con più condizioni:
-        # 1. Divide l'input in base alle virgole
-        # 2. Per ogni valore, rimuove gli spazi iniziali e finali
-        # 3. Verifica che sia composto solo da cifre
-        # 4. Verifica che sia nell'intervallo 18-30
-        # 5. Converte in intero
-        voti = [
-            int(v.strip()) 
-            for v in voti_input.split(",") 
-            if v.strip().isdigit() and 18 <= int(v.strip()) <= 30
-        ]
-    except ValueError:
-        voti = []  # In case of error, initialize with empty list
+        print("⚠️ Il cognome non può essere vuoto. Riprova.")
 
-    # Verify that there is at least one valid grade
-    if not voti:
-        print("⚠️ No valid grades entered (must be between 18 and 30). Student not added.")
-        return  # Terminates the function without adding the student
+    # Richiesta e validazione dei voti
+    while True:
+        voti_input = input("Inserisci i voti separati da virgola (es. 24,26,30): ").strip()
+        try:
+            # List comprehension con validazione dei voti
+            voti = [
+                int(v.strip()) 
+                for v in voti_input.split(",") 
+                if v.strip() and v.strip().isdigit()
+            ]
+            
+            # Filtra solo i voti validi (18-30)
+            voti_validi = [v for v in voti if VOTO_MIN <= v <= VOTO_MAX]
+            
+            if not voti_validi:
+                print(f"⚠️ Inserire almeno un voto valido (tra {VOTO_MIN} e {VOTO_MAX})")
+                continue
+            
+            voti = voti_validi  # Aggiorna la lista dei voti con solo quelli validi
+            break
+            
+        except ValueError:
+            print("⚠️ Formato non valido. Usa numeri separati da virgole.")
+            continue
 
-    # PHASE 2: Data creation and saving
-    # ---------------------------------
-
-    # Create the new student as dictionary
+    # FASE 2: Creazione e salvataggio dati
     nuovo_studente = {
         "matricola": matricola,
         "nome": nome,
