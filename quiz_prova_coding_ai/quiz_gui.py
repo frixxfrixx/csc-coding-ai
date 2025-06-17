@@ -1,12 +1,17 @@
 """
-Interfaccia grafica per il Quiz a scelta multipla.
-Implementa le tre schermate principali:
+Interfaccia grafica per il Quiz a scelta multipla usando Tkinter.
+Implementa le tre schermate principali con le seguenti caratteristiche:
 1. Schermata di benvenuto con selezione difficoltà
-2. Schermata del quiz con domanda e risposte
-3. Schermata di riepilogo finale
+2. Schermata del quiz con:
+   - Punteggio in alto a sinistra
+   - Pulsante di uscita in alto a destra
+   - Barra del timer con tempo rimanente
+   - Domanda e opzioni di risposta
+   - Pulsante per saltare la domanda in basso
+3. Schermata di riepilogo finale con statistiche complete
 
-Autore: Your Name
-Data: 2025-06-17
+:author: frixx & ai
+:created: 2025-06-17
 """
 
 import tkinter as tk
@@ -169,25 +174,46 @@ class QuizApp:
         main_frame = ttk.Frame(self.root, padding="20")
         main_frame.pack(expand=True, fill='both')
         
-        # Frame superiore per timer e punteggio
+        # Frame superiore per timer, punteggio e pulsante di uscita
         info_frame = ttk.Frame(main_frame)
         info_frame.pack(fill='x', pady=(0, 20))
         
-        # Timer
-        self.timer_label = ttk.Label(
-            info_frame,
-            text=f"Tempo: {self.session.timeout}s",
-            font=('Helvetica', 12)
-        )
-        self.timer_label.pack(side='left')
-        
-        # Punteggio
+        # Punteggio a sinistra
         score_label = ttk.Label(
             info_frame,
             text=f"Punteggio: {self.session.punteggio}",
             font=('Helvetica', 12)
         )
-        score_label.pack(side='right')
+        score_label.pack(side='left')
+        
+        # Timer al centro
+        timer_frame = ttk.Frame(info_frame)
+        timer_frame.pack(side='left', expand=True, padx=20)
+        
+        self.timer_label = ttk.Label(
+            timer_frame,
+            text=f"Tempo: {self.session.timeout}s",
+            font=('Helvetica', 12)
+        )
+        self.timer_label.pack()
+        
+        # Progress bar per il timer
+        self.timer_bar = ttk.Progressbar(
+            timer_frame,
+            length=300,
+            mode='determinate',
+            maximum=self.session.timeout
+        )
+        self.timer_bar.pack(pady=(5, 0))
+        
+        # Pulsante di uscita a destra
+        exit_button = ttk.Button(
+            info_frame,
+            text="✖",
+            width=3,
+            command=self.root.quit
+        )
+        exit_button.pack(side='right')
         
         # Testo della domanda
         question_text = ttk.Label(
@@ -213,14 +239,25 @@ class QuizApp:
             )
             btn.pack(pady=5, padx=10, fill='x')
         
+        # Pulsante per saltare la domanda
+        skip_button = ttk.Button(
+            main_frame,
+            text="Salta domanda ⏭",
+            style="Primary.TButton",
+            command=lambda: self.answer_question(None)
+        )
+        skip_button.pack(pady=20, padx=10, fill='x')
+        
         # Avvia il timer
         self.time_left = self.session.timeout
+        self.timer_bar['value'] = self.session.timeout
         self.update_timer()
 
     def update_timer(self):
         """Aggiorna il timer della domanda corrente."""
         if self.time_left > 0:
             self.timer_label.configure(text=f"Tempo: {self.time_left}s")
+            self.timer_bar['value'] = self.time_left
             self.time_left -= 1
             self.timer_id = self.root.after(1000, self.update_timer)
         else:
@@ -231,24 +268,17 @@ class QuizApp:
         if self.timer_id:
             self.root.after_cancel(self.timer_id)
         
+        # Registra il tempo impiegato
         elapsed_time = self.session.timeout - self.time_left
-        points, is_correct, timeout = self.session.record_answer(
+        
+        # Registra la risposta senza mostrare feedback
+        self.session.record_answer(
             self.current_question,
             answer,
             elapsed_time
         )
         
-        # Mostra feedback
-        if timeout:
-            messagebox.showinfo("Tempo scaduto!", "Tempo esaurito per questa domanda.")
-        elif is_correct:
-            messagebox.showinfo("Corretto!", f"Hai guadagnato {points} punti!")
-        else:
-            messagebox.showinfo("Sbagliato!", 
-                              f"La risposta corretta era {self.current_question.corretta}. "
-                              f"Hai perso {abs(points)} punti.")
-        
-        # Passa alla prossima domanda
+        # Passa direttamente alla prossima domanda
         self.show_question()
 
     def show_summary(self):

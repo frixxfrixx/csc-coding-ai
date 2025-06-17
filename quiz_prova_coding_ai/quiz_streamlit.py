@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from models import Domanda, QuizSession
 from config import DIFFICULTY_SETTINGS
 from data_loader import load_questions
-from score_calculator import calculate_score
+from process_answer import process_answer
 
 # Configurazione della pagina
 st.set_page_config(
@@ -129,59 +129,62 @@ def show_question():
     if st.session_state.current_question_index >= len(st.session_state.questions):
         show_summary()
         return
+
+    # Pulsante Esci (in alto a destra)
+    col1, col2 = st.columns([3, 1])
+    with col2:
+        if st.button("❌ Esci", key="exit"):
+            show_summary()
+            return
+    
+    # Mostra punteggio attuale
+    with col1:
+        st.metric("Punteggio", st.session_state.score)
     
     question = st.session_state.questions[st.session_state.current_question_index]
     
     # Calcola il tempo rimanente
     elapsed = datetime.now() - st.session_state.start_time
     remaining = st.session_state.timeout - elapsed.total_seconds()
+    remaining = max(0, remaining)
     
-    # Mostra timer e punteggio
-    col1, col2 = st.columns(2)
-    with col1:
-        st.metric("Tempo rimanente", f"{max(0, int(remaining))}s")
-    with col2:
-        st.metric("Punteggio", st.session_state.score)
+    # Progress bar per il timer
+    progress = remaining / st.session_state.timeout
+    st.progress(progress)
+    st.text(f"⏰ Tempo rimanente: {int(remaining)}s")
     
     # Mostra la domanda
     st.markdown(f"### {question.testo}")
     
-    # Mostra le opzioni come pulsanti
-    for letter, text in question.opzioni.items():
-        if st.button(f"{letter}. {text}", key=letter):
-            process_answer(question, letter, st.session_state.timeout - remaining)
+    # Container per le opzioni e il pulsante salta
+    with st.container():
+        # Mostra le opzioni come pulsanti
+        for letter, text in question.opzioni.items():
+            if st.button(f"{letter}. {text}", key=letter):
+                process_answer(
+                    question,
+                    letter,
+                    st.session_state.timeout - remaining,
+                    st.session_state
+                )
+        
+        # Pulsante per saltare la domanda
+        if st.button("⏭️ Salta domanda", key="skip"):
+            process_answer(
+                question,
+                None,
+                st.session_state.timeout,
+                st.session_state
+            )
     
     # Gestione timeout
     if remaining <= 0:
-        process_answer(question, None, st.session_state.timeout)
-
-def process_answer(question: Domanda, answer: str, elapsed_time: float):
-    """Processa la risposta dell'utente."""
-    points = calculate_score(
-        is_correct=answer == question.corretta,
-        tempo=elapsed_time,
-        timeout=st.session_state.timeout
-    )
-    
-    # Aggiorna statistiche
-    if answer is None:
-        st.session_state.stats["saltate"] += 1
-        st.warning("⏰ Tempo scaduto!")
-    elif answer == question.corretta:
-        st.session_state.stats["corrette"] += 1
-        st.success(f"✅ Corretto! Hai guadagnato {points} punti!")
-    else:
-        st.session_state.stats["errate"] += 1
-        st.error(f"❌ Sbagliato! La risposta corretta era {question.corretta}")
-    
-    st.session_state.stats["tempi"].append(elapsed_time)
-    st.session_state.score += points
-    st.session_state.current_question_index += 1
-    st.session_state.start_time = datetime.now()
-    
-    # Piccola pausa per mostrare il feedback
-    st.balloons() if answer == question.corretta else None
-    st.rerun()
+        process_answer(
+            question,
+            None,
+            st.session_state.timeout,
+            st.session_state
+        )
 
 def show_summary():
     """Mostra il riepilogo finale del quiz."""

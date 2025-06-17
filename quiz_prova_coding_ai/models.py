@@ -70,30 +70,35 @@ class QuizSession:
         Registra una risposta, calcola il punteggio e aggiorna le statistiche.
 
         :param domanda: oggetto Domanda
-        :param risposta: stringa "A"–"D" o "" se nulla
+        :param risposta: stringa "A"–"D" o None/""
         :param tempo: tempo impiegato per rispondere
         :return: (punti ottenuti, risposta corretta?, tempo scaduto?)
         """
         from score_calculator import calculate_score
-        from timer import is_timeout
+        
+        # Verifica se il tempo è scaduto
+        scaduto = tempo >= self.timeout
 
-        scaduto = is_timeout(tempo, self.timeout)
-
-        # Se il tempo è scaduto, la risposta è considerata nulla
-        if scaduto:
-            risposta = ""
-
-        is_correct = risposta == domanda.corretta
-        punti = calculate_score(is_correct, tempo, self.timeout)
-        self.punteggio += punti
-        self.stats["tempi"].append(tempo)
-
-        if risposta == "":
+        # Se il tempo è scaduto o la risposta è None, la domanda è saltata
+        if scaduto or risposta is None:
             self.stats["saltate"] += 1
-        elif is_correct:
+            self.stats["tempi"].append(tempo)
+            return 0, False, scaduto
+
+        # Verifica se la risposta è corretta
+        is_correct = risposta == domanda.corretta
+        
+        # Aggiorna le statistiche
+        if is_correct:
             self.stats["corrette"] += 1
         else:
             self.stats["errate"] += 1
-
+        
+        self.stats["tempi"].append(tempo)
+        
+        # Calcola e aggiorna il punteggio
+        punti = calculate_score(is_correct, tempo, self.timeout)
+        self.punteggio += punti
+        
         return punti, is_correct, scaduto
 
