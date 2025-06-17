@@ -1,4 +1,13 @@
-# main.py
+"""
+Punto di ingresso del Quiz a scelta multipla.
+
+Coordina il caricamento delle domande, l’interazione con l’utente,
+il calcolo del punteggio e la visualizzazione dei risultati.
+
+:author: Tuo Nome
+:created: 2025-06-12
+"""
+
 import random
 import sys
 
@@ -14,7 +23,7 @@ from ui import (
     display_summary,
     prompt_initials_and_save
 )
-from quiz_gui import root  # Importa la GUI
+
 
 def main():
     """
@@ -59,9 +68,6 @@ def main():
         if not prompt_restart():
             print("\n👋 Grazie per aver giocato!")
             break
-
-    # Chiamata alla GUI
-    root.mainloop()
 
 if __name__ == "__main__":
     main()
