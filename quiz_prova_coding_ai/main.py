@@ -1,67 +1,48 @@
-# main.py
-import random
-import sys
+"""
+Punto di ingresso del Quiz a scelta multipla.
 
-from config import DIFFICULTY_SETTINGS
-from data_loader import load_questions
-from models import QuizSession
-from ui import (
-    prompt_difficulty,
-    prompt_restart,
-    display_question,
-    prompt_answer,
-    display_feedback,
-    display_summary,
-    prompt_initials_and_save
-)
-from quiz_gui import root  # Importa la GUI
+Avvia l'interfaccia web del quiz utilizzando Streamlit.
+
+:author: frixx & ai
+:created: 2025-06-17
+"""
+
+import os
+import subprocess
+import webbrowser
+from time import sleep
 
 def main():
     """
-    Ciclo principale del programma. Gestisce una o più sessioni quiz.
+    Avvia l'applicazione web e apre il browser.
     """
-    while True:
-        try:
-            # Caricamento domande
-            import os
-
-            # Trova la cartella dove si trova main.py
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-            file_path = os.path.join(base_dir, "questions.json")
-
-            questions = load_questions(file_path)
-        except Exception as e:
-            print(f"❌ Errore nel caricamento delle domande: {e}")
-            sys.exit(1)
-
-        # Selezione difficoltà → imposta N domande e timeout
-        num_domande, timeout = prompt_difficulty()
-
-        # Mescola e seleziona le prime N domande
-        random.shuffle(questions)
-        domande_selezionate = questions[:num_domande]
-
-        # Inizializza la sessione quiz
-        sessione = QuizSession(domande=domande_selezionate, timeout=timeout)
-
-        # Loop principale del quiz
-        while (q := sessione.next_question()):
-            display_question(q)
-            risposta, tempo = prompt_answer(timeout)
-            punti, is_correct, scaduto = sessione.record_answer(q, risposta, tempo)
-            display_feedback(is_correct, punti, tempo, scaduto)
-
-        # Mostra riepilogo finale
-        display_summary(sessione.stats, sessione.punteggio)
-        prompt_initials_and_save(sessione.punteggio, sessione.stats["tempi"])
-
-        # Richiesta di ripetere il quiz
-        if not prompt_restart():
-            print("\n👋 Grazie per aver giocato!")
-            break
-
-    # Chiamata alla GUI
-    root.mainloop()
+    # Ottiene il percorso assoluto della directory corrente
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Avvia il server Streamlit in background
+    streamlit_process = subprocess.Popen(
+        ["streamlit", "run", "quiz_streamlit.py"],
+        cwd=current_dir,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+    
+    # Aspetta un momento per permettere al server di avviarsi
+    sleep(2)
+    
+    # Apri il browser all'URL locale
+    webbrowser.open('http://localhost:8501')
+    
+    print("✨ Quiz avviato! Se il browser non si apre automaticamente, visita: http://localhost:8501")
+    print("Per terminare il quiz, chiudi questa finestra.")
+    
+    try:
+        # Mantieni il processo attivo
+        streamlit_process.wait()
+    except KeyboardInterrupt:
+        # Gestisce la chiusura pulita con Ctrl+C
+        streamlit_process.terminate()
+        print("\n👋 Grazie per aver giocato!")
 
 if __name__ == "__main__":
     main()
